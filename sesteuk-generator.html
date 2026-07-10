@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>세특 자동생성기</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "Malgun Gothic", sans-serif; max-width: 900px; margin: 0 auto; padding: 24px 16px; color: #222; background: #fafafa; }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  .sub { font-size: 13px; color: #777; margin-bottom: 20px; }
+  details { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; }
+  summary { cursor: pointer; font-size: 13px; font-weight: 600; color: #444; }
+  .row3 { display: grid; grid-template-columns: 140px 140px 1fr auto; gap: 8px; margin-top: 10px; align-items: start; }
+  .row1 { margin-top: 10px; }
+  textarea, input, select { width: 100%; font-size: 14px; padding: 6px 8px; border: 1px solid #ccc; border-radius: 6px; font-family: inherit; }
+  button { padding: 6px 12px; border: 1px solid #888; border-radius: 6px; background: #fff; cursor: pointer; font-size: 13px; white-space: nowrap; }
+  button:hover { background: #f0f0f0; }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 13px; color: #555; margin-bottom: 4px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .genbar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .genbar select { width: 120px; }
+  .genbar button { margin-left: auto; background: #222; color: #fff; border-color: #222; }
+  .card { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 12px 14px; margin-bottom: 10px; }
+  .card-head { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; }
+  .card-head .label { font-weight: 600; color: #0b57a4; }
+  .card-head .count { color: #999; }
+  .card textarea { min-height: 70px; }
+  .actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 6px; }
+  .actions button { font-size: 12px; padding: 4px 10px; }
+  .bottom-actions { display: none; gap: 8px; margin-top: 12px; }
+  .status { font-size: 12px; color: #999; margin-left: 8px; }
+</style>
+</head>
+<body>
+
+<h1>세특 자동생성기</h1>
+<div class="sub">과목 · 대단원 · 소단원을 계층적으로 등록하고, 선택한 단원에 맞춰 10가지 관점의 세부능력특기사항을 자동 생성합니다.</div>
+
+<details open>
+  <summary>0단계. 자료 일괄 등록 (형식: 과목 &gt; 대단원 &gt; 소단원, 한 줄에 하나씩)</summary>
+  <div class="row1">
+    <textarea id="bulkInput" rows="6" placeholder="예시)&#10;간호의 기초 > 혈액관리법 > 혈액관리법의 탐구&#10;간호의 기초 > 혈액관리법 > 수혈 간호&#10;간호의 기초 > 근골격 계통 질환 > 골절&#10;보건간호 > > 감염 관리 (대단원 없으면 이렇게 비워두세요)"></textarea>
+    <div style="margin-top:6px">
+      <button id="bulkAddBtn">일괄 등록</button>
+      <span class="status" id="statusBulk"></span>
+    </div>
+  </div>
+</details>
+
+<details open>
+  <summary>1단계. 과목 등록</summary>
+  <div class="row1">
+    <textarea id="subjectListInput" rows="2" placeholder="예: 간호의 기초, 보건간호"></textarea>
+    <div style="margin-top:6px"><button id="addSubjects">과목 추가</button><span class="status" id="statusSubject"></span></div>
+  </div>
+</details>
+
+<details open>
+  <summary>2단계. 대단원 등록 (과목 선택 후 그 과목에 속하는 대단원 추가)</summary>
+  <div class="row3">
+    <select id="regSubjectForBig"></select>
+    <div></div>
+    <textarea id="bigUnitListInput" rows="2" placeholder="예: 혈액관리법, 근골격 계통 질환"></textarea>
+    <button id="addBigUnits">대단원 추가</button>
+  </div>
+</details>
+
+<details open>
+  <summary>3단계. 소단원 등록 (과목 → 대단원 선택 후 소단원 추가)</summary>
+  <div class="row3">
+    <select id="regSubjectForSmall"></select>
+    <select id="regBigUnitForSmall"></select>
+    <textarea id="smallUnitListInput" rows="2" placeholder="예: 혈액관리법의 탐구, 골절"></textarea>
+    <button id="addSmallUnits">소단원 추가</button>
+  </div>
+</details>
+
+<div class="grid3">
+  <div class="field"><label>과목명</label><select id="subjectSelect"></select></div>
+  <div class="field"><label>대단원</label><select id="bigUnitSelect"></select></div>
+  <div class="field"><label>소단원 / 활동명</label><select id="smallUnitSelect"></select></div>
+</div>
+
+<div class="field">
+  <label>핵심 개념/키워드 (쉼표로 구분)</label>
+  <input
