@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>세특 자동생성기</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "Malgun Gothic", sans-serif; max-width: 900px; margin: 0 auto; padding: 24px 16px; color: #222; background: #fafafa; }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  .sub { font-size: 13px; color: #777; margin-bottom: 20px; }
+  details { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; }
+  summary { cursor: pointer; font-size: 13px; font-weight: 600; color: #444; }
+  .row3 { display: grid; grid-template-columns: 140px 140px 1fr auto; gap: 8px; margin-top: 10px; align-items: start; }
+  .row1 { margin-top: 10px; }
+  textarea, input, select { width: 100%; font-size: 14px; padding: 6px 8px; border: 1px solid #ccc; border-radius: 6px; font-family: inherit; }
+  button { padding: 6px 12px; border: 1px solid #888; border-radius: 6px; background: #fff; cursor: pointer; font-size: 13px; white-space: nowrap; }
+  button:hover { background: #f0f0f0; }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 13px; color: #555; margin-bottom: 4px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .genbar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .genbar select { width: 120px; }
+  .genbar button { margin-left: auto; background: #222; color: #fff; border-color: #222; }
+  .card { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 12px 14px; margin-bottom: 10px; }
+  .card-head { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; }
+  .card-head .label { font-weight: 600; color: #0b57a4; }
+  .card-head .count { color: #999; }
+  .card textarea { min-height: 100px; }
+  .actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 6px; }
+  .actions button { font-size: 12px; padding: 4px 10px; }
+  .bottom-actions { display: none; gap: 8px; margin-top: 12px; }
+  .status { font-size: 12px; color: #999; margin-left: 8px; }
+</style>
+</head>
+<body>
+
+<h1>세특 자동생성기</h1>
+<div class="sub">과목 · 대단원 · 소단원을 계층적으로 등록하고, 선택한 단원에 맞춰 16가지 관점의 세부능력특기사항을 자동 생성합니다. 생성할 때마다 문장 조합이 달라집니다.</div>
+
+<details open>
+  <summary>0단계. 자료 일괄 등록 (형식: 과목 &gt; 대단원 &gt; 소단원, 한 줄에 하나씩)</summary>
+  <div class="row1">
+    <textarea id="bulkInput" rows="6" placeholder="예시)&#10;간호의 기초 > 혈액관리법 > 혈액관리법의 탐구&#10;간호의 기초 > 혈액관리법 > 수혈 간호&#10;간호의 기초 > 근골격 계통 질환 > 골절&#10;보건간호 > > 감염 관리 (대단원 없으면 이렇게 비워두세요)"></textarea>
+    <div style="margin-top:6px">
+      <button id="bulkAddBtn">일괄 등록</button>
+      <span class="status" id="statusBulk"></span>
+    </div>
+  </div>
+</details>
+
+<details open>
+  <summary>1단계. 과목 등록</summary>
+  <div class="row1">
+    <textarea id="subjectListInput" rows="2" placeholder="예: 간호의 기초, 보건간호"></textarea>
+    <div style="margin-top:6px"><button id="addSubjects">과목 추가</button><span class="status" id="statusSubject"></span></div>
+  </div>
+</details>
+
+<details open>
+  <summary>2단계. 대단원 등록 (과목 선택 후 그 과목에 속하는 대단원 추가)</summary>
+  <div class="row3">
+    <select id="regSubjectForBig"></select>
+    <div></div>
+    <textarea id="bigUnitListInput" rows="2" placeholder="예: 혈액관리법, 근골격 계통 질환"></textarea>
+    <button id="addBigUnits">대단원 추가</button>
+  </div>
+</details>
+
+<details open>
+  <summary>3단계. 소단원 등록 (과목 → 대단원 선택 후 소단원 추가)</summary>
+  <div class="row3">
+    <select id="regSubjectForSmall"></select>
+    <select id="regBigUnitForSmall"></select>
+    <textarea id="smallUnitListInput" rows="2" placeholder="예: 혈액관리법의 탐구, 골절"></textarea>
+    <button id="addSmallUnits">소단원 추가</button>
+  </div>
+</details>
+
+<div class="grid3">
+  <div class="field"><label>과목명</label><select id="subjectSelect"></select></div>
+  <div class="field"><label>대단원</label><select id="bigUnitSelect"></select></div>
+  <div class="field"><label>소단원 / 활동명</label><select id="smallUnitSelect"></select></div>
+</div>
+
+<div class="field">
+  <label style="color:#999">담당 교사 (선택사항, 저장 기록 구분용)</label>
+  <input id="teacherName" type="text" placeholder="예: 김선생">
+</div>
+
+<div class="field">
+  <label>핵심 개념/키워드 (쉼표로 구분)</label>
+  <input id="concepts" type="text" placeholder="예: 혈액형, 수혈 부작용">
+</div>
+
+<div class="field">
+  <label style="color:#999">간호 중재 / 방법 (선택사항, 비워두어도 됨)</label>
+  <input id="methods" type="text" placeholder="예: 교차시험, 수혈 관찰">
+</div>
+
+<div class="genbar">
+  <label style="font-size:13px">글자수 제한</label>
+  <select id="limit">
+    <option value="200">200자</option>
+    <option value="300">300자</option>
+    <option value="500" selected>500자</option>
+  </select>
+  <button id="genBtn">16가지 버전 생성</button>
+</div>
+
+<div id="results"></div>
+
+<div class="bottom-actions" id="bottomActions">
+  <button id="copyAllBtn">전체 복사</button>
+  <button id="downloadBtn">txt 다운로드</button>
+  <button id="saveAllBtn">전체 시트 저장</button>
+  <span class="status" id="statusSaveAll"></span>
+</div>
+
+<script>
+// ===== GAS 배포 URL =====
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxr8VzVE7-jLDxHPTjHCsfstGOzYuRu3sWIdWAiuqF5o_PLMk0Ui8izody2Mz4F2gGV/exec';
+// ========================
+
+const NO_BIG = '(대단원 없음)';
+let data = { subjects: {} };
+
+function splitList(raw){
+  return raw.split(/[\n,]/).map(s => s.trim()).filter(Boolean);
+}
+
+async function apiGet(){
+  const res = await fetch(GAS_URL);
+  return res.json();
+}
+
+async function apiPost(payload){
+  await fetch(GAS_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify(payload)
+  });
+}
+
+function rebuildHierarchy(json){
+  data = { subjects: {} };
+  (json.subjects || []).forEach(row => {
+    const name = row[0];
+    if (name && !data.subjects[name]) data.subjects[name] = { bigUnits: {} };
+  });
+  (json.bigUnits || []).forEach(row => {
+    const [subj, big] = row;
+    if (!subj || !big) return;
+    if (!data.subjects[subj]) data.subjects[subj] = { bigUnits: {} };
+    if (!data.subjects[subj].bigUnits[big]) data.subjects[subj].bigUnits[big] = [];
+  });
+  (json.smallUnits || []).forEach(row => {
+    const [subj, big, small] = row;
+    if (!subj || !small) return;
+    const bigKey = big || NO_BIG;
+    if (!data.subjects[subj]) data.subjects[subj] = { bigUnits: {} };
+    if (!data.subjects[subj].bigUnits[bigKey]) data.subjects[subj].bigUnits[bigKey] = [];
+    if (data.subjects[subj].bigUnits[bigKey].indexOf(small) === -1) {
+      data.subjects[subj].bigUnits[bigKey].push(small);
+    }
+  });
+  Object.keys(data.subjects).forEach(subj => {
+    if (!data.subjects[subj].bigUnits[NO_BIG]) data.subjects[subj].bigUnits[NO_BIG] = [];
+  });
+}
+
+function fillSelect(selectEl, items, placeholder){
+  const prev = selectEl.value;
+  selectEl.innerHTML = '';
+  if (items.length === 0 && placeholder){
+    const opt0 = document.createElement('option');
+    opt0.value = ''; opt0.textContent = placeholder;
+    selectEl.appendChild(opt0);
+    return;
+  }
+  items.forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name; opt.textContent = name;
+    selectEl.appendChild(opt);
+  });
+  if (items.indexOf(prev) !== -1) selectEl.value = prev;
+}
+
+function subjectNames(){ return Object.keys(data.subjects); }
+function bigUnitNames(subj){ return data.subjects[subj] ? Object.keys(data.subjects[subj].bigUnits) : []; }
+function smallUnitNames(subj, big){ return (data.subjects[subj] && data.subjects[subj].bigUnits[big]) ? data.subjects[subj].bigUnits[big] : []; }
+
+function refreshAllSubjectSelects(){
+  [document.getElementById('regSubjectForBig'), document.getElementById('regSubjectForSmall'), document.getElementById('subjectSelect')]
+    .forEach(sel => fillSelect(sel, subjectNames(), '과목을 먼저 등록하세요'));
+  syncRegBigForSmall();
+  syncMainBigUnit();
+}
+function syncRegBigForSmall(){
+  const subj = document.getElementById('regSubjectForSmall').value;
+  fillSelect(document.getElementById('regBigUnitForSmall'), bigUnitNames(subj), '대단원 없음');
+}
+function syncMainBigUnit(){
+  const subj = document.getElementById('subjectSelect').value;
+  fillSelect(document.getElementById('bigUnitSelect'), bigUnitNames(subj), '대단원 없음');
+  syncMainSmallUnit();
+}
+function syncMainSmallUnit(){
+  const subj = document.getElementById('subjectSelect').value;
+  const big = document.getElementById('bigUnitSelect').value;
+  fillSelect(document.getElementById('smallUnitSelect'), smallUnitNames(subj, big), '소단원을 등록하세요');
+}
+
+async function loadAndRefresh(){
+  try {
+    const json = await apiGet();
+    rebuildHierarchy(json);
+    refreshAllSubjectSelects();
+  } catch(err){
+    console.error(err);
+    alert('데이터를 불러오지 못했습니다. GAS_URL 설정 및 배포 권한(모든 사용자)을 확인해주세요.');
+  }
+}
+
+// ===== 0단계: 자료 일괄 등록 =====
+function parseBulkLine(line){
+  const parts = line.split('>').map(s => s.trim());
+  if (parts.length === 2) return { subject: parts[0], bigUnit: '', smallUnit: parts[1] };
+  if (parts.length >= 3) return { subject: parts[0], bigUnit: parts[1], smallUnit: parts[2] };
+  return null;
+}
+
+document.getElementById('bulkAddBtn').addEventListener('click', async function(){
+  const lines = document.getElementById('bulkInput').value
+    .split('\n').map(s => s.trim()).filter(Boolean);
+  const statusEl = document.getElementById('statusBulk');
+  const seenSubjects = new Set();
+  const seenBigUnits = new Set();
+
+  let done = 0;
+  for (const line of lines) {
+    const item = parseBulkLine(line);
+    if (!item || !item.subject || !item.smallUnit) continue;
+
+    if (!seenSubjects.has(item.subject)) {
+      await apiPost({ type: 'subject', name: item.subject });
+      seenSubjects.add(item.subject);
+    }
+    if (item.bigUnit) {
+      const key = item.subject + '::' + item.bigUnit;
+      if (!seenBigUnits.has(key)) {
+        await apiPost({ type: 'bigUnit', subject: item.subject, name: item.bigUnit });
+        seenBigUnits.add(key);
+      }
+    }
+    await apiPost({
+      type: 'smallUnit',
+      subject: item.subject,
+      bigUnit: item.bigUnit,
+      name: item.smallUnit
+    });
+
+    done++;
+    statusEl.textContent = `등록 중... (${done}/${lines.length})`;
+  }
+
+  document.getElementById('bulkInput').value = '';
+  await loadAndRefresh();
+  statusEl.textContent = `${done}건 등록 완료`;
+  setTimeout(() => statusEl.textContent = '', 2500);
+});
+
+// ===== 1~3단계: 개별 등록 =====
+document.getElementById('addSubjects').addEventListener('click', async function(){
+  const items = splitList(document.getElementById('subjectListInput').value);
+  const statusEl = document.getElementById('statusSubject');
+  statusEl.textContent = '저장 중...';
+  for (const name of items) await apiPost({ type: 'subject', name });
+  document.getElementById('subjectListInput').value = '';
+  await loadAndRefresh();
+  statusEl.textContent = '저장됨';
+  setTimeout(() => statusEl.textContent = '', 1500);
+});
+
+document.getElementById('addBigUnits').addEventListener('click', async function(){
+  const subj = document.getElementById('regSubjectForBig').value;
+  if (!subj) return alert('과목을 먼저 등록/선택하세요.');
+  const items = splitList(document.getElementById('bigUnitListInput').value);
+  for (const name of items) await apiPost({ type: 'bigUnit', subject: subj, name });
+  document.getElementById('bigUnitListInput').value = '';
+  await loadAndRefresh();
+});
+
+document.getElementById('addSmallUnits').addEventListener('click', async function(){
+  const subj = document.getElementById('regSubjectForSmall').value;
+  const big = document.getElementById('regBigUnitForSmall').value || NO_BIG;
+  if (!subj) return alert('과목을 먼저 등록/선택하세요.');
+  const items = splitList(document.getElementById('smallUnitListInput').value);
+  for (const name of items) await apiPost({ type: 'smallUnit', subject: subj, bigUnit: big === NO_BIG ? '' : big, name });
+  document.getElementById('smallUnitListInput').value = '';
+  await loadAndRefresh();
+});
+
+document.getElementById('regSubjectForSmall').addEventListener('change', syncRegBigForSmall);
+document.getElementById('subjectSelect').addEventListener('change', syncMainBigUnit);
+document.getElementById('bigUnitSelect').addEventListener('change', syncMainSmallUnit);
+
+function koreanJoin(arr){
+  arr = arr.filter(Boolean);
+  if (arr.length === 0) return '';
+  if (arr.length === 1) return arr[0];
+  return arr.slice(0, -1).join(', ') + '과 ' + arr[arr.length - 1];
+}
+
+function conceptPhrase(concepts, unit){
+  if (concepts.length === 0) return unit;
+  if (concepts.length <= 2) return koreanJoin(concepts);
+  return koreanJoin(concepts.slice(0, 2)) + ' 등';
+}
+
+function shuffleArr(arr){
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function pickOne(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
+
+function buildPools(unit, concepts, methods){
+  const cFull = concepts.length ? koreanJoin(concepts) : unit;
+  const cShort = conceptPhrase(concepts, unit);
+  const m = koreanJoin(methods);
+  const hasM = methods.length > 0;
+
+  return [
+    { label:'성취수준·근거',
+      openings:[
+        unit+' 성취기준에 비추어 '+cShort+'에 대한 이해 정도를 다양한 활동으로 확인함.',
+        cShort+'에 대해 얼마나 정확히 이해하고 있는지를 여러 활동을 통해 점검함.'
+      ],
+      middles:[
+        '핵심 개념을 정확히 설명하고 관련 사례를 스스로 찾아 근거로 제시함.',
+        hasM ? m+'을 정확한 근거를 들어 설명하며 기준 이상의 이해도를 보임.' : '질문에 대한 답변에서 개념 간 관계를 정확히 파악하고 있음을 드러냄.',
+        '평가 과정에서 오개념을 스스로 발견하고 수정하며 이해를 심화함.',
+        '단순 암기가 아니라 원리를 이해한 후 자신의 언어로 재설명하는 능력을 보임.',
+        '평가 결과에 대한 교사의 피드백을 정확히 이해하고 다음 학습에 반영함.',
+        '수업 중 제시된 다양한 자료를 종합하여 일관된 결론을 도출하는 능력을 보임.',
+        '기본 개념뿐 아니라 응용 문제에서도 흔들림 없는 이해력을 보임.'
+      ],
+      closings:[
+        '학습 목표에 부합하는 결과물을 제출하여 성취수준을 분명히 입증함.',
+        '이러한 모습을 통해 해당 영역의 핵심 역량을 안정적으로 갖추었음을 확인함.'
+      ]
+    },
+    { label:'수업 참여 태도',
+      openings:[
+        '수업 시간 내내 집중력을 유지하며 '+cShort+' 관련 활동에 성실히 참여함.',
+        cShort+' 관련 수업에서 흐트러짐 없는 태도로 처음부터 끝까지 참여함.'
+      ],
+      middles:[
+        '교사의 질문에 즉각적으로 반응하고 스스로 추가 질문을 던지는 적극성을 보임.',
+        hasM ? m+'을 다룰 때도 흐트러짐 없이 끝까지 집중하는 태도를 유지함.' : '내용이 어려워도 포기하지 않고 끝까지 이해하려는 태도를 보임.',
+        '필기와 정리가 꼼꼼하여 복습 시에도 스스로 내용을 재구성할 수 있는 수준임.',
+        '수업 준비물과 과제를 빠짐없이 챙기며 학습에 임하는 성실한 자세를 보임.',
+        '모둠 활동에서도 맡은 역할에 책임감을 가지고 끝까지 완수함.',
+        '지각이나 태만 없이 매 수업 처음부터 끝까지 적극적인 태도를 유지함.',
+        '어려운 개념을 만나도 조급해하지 않고 차근차근 풀어가는 인내심을 보임.'
+      ],
+      closings:[
+        '이러한 성실한 참여가 누적되어 학습 결과물의 완성도로 이어짐.',
+        '꾸준한 참여 태도가 학기 전반에 걸쳐 안정적으로 유지됨.'
+      ]
+    },
+    { label:'성장·변화 과정',
+      openings:[
+        unit+' 학습 초반 낯설어하던 모습에서 점차 능숙하게 설명하는 수준으로 성장함.',
+        '처음에는 '+cShort+'에 대한 이해가 부족했으나 점차 뚜렷한 향상을 보임.'
+      ],
+      middles:[
+        '처음에는 단편적 지식에 머물렀으나 '+cShort+'을 반복 학습하며 체계적으로 정리하는 능력을 갖춤.',
+        hasM ? m+'을 처음엔 어려워했지만 스스로 연습하며 능숙하게 적용하는 단계에 이름.' : '스스로 오답을 분석하고 보완하며 이해의 폭을 꾸준히 넓혀감.',
+        '동료와 비교하며 자신의 부족한 부분을 인지하고 개선해 나가는 모습을 보임.',
+        '초기에는 소극적이던 발표 태도가 점차 자신감 있는 모습으로 바뀜.',
+        '반복되는 연습을 통해 처음보다 훨씬 정교한 결과물을 만들어내는 성장을 보임.',
+        '실수를 두려워하지 않고 도전하는 태도가 점차 뚜렷해짐.',
+        '짧은 기간 안에 눈에 띄는 향상을 보이며 학습에 대한 자신감을 회복함.'
+      ],
+      closings:[
+        '이러한 성장 과정이 이후 학습에 대한 지속적인 동기로 이어짐.',
+        '스스로 이룬 변화를 발판 삼아 다음 단계 학습에 자신감 있게 나섬.'
+      ]
+    },
+    { label:'심화 탐구',
+      openings:[
+        unit+'에서 다룬 내용에 그치지 않고 '+cShort+'을 스스로 더 깊이 조사하며 탐구함.',
+        '수업에서 배운 것을 넘어 '+cShort+'을 자기주도적으로 파고들며 학습을 확장함.'
+      ],
+      middles:[
+        '전문 자료와 실제 사례를 폭넓게 수집하여 핵심 내용을 체계적으로 정리함.',
+        hasM ? m+'의 원리와 적용 시 유의점을 근거를 들어 정확히 설명함.' : '원인부터 결과까지 인과관계를 따라가며 깊이 있게 이해함.',
+        '학습 중 생긴 궁금증을 스스로 질문하고 답을 찾아가는 태도를 꾸준히 유지함.',
+        '수업 시간에 다루지 않은 심화 내용까지 스스로 찾아 학습 범위를 확장함.',
+        '조사한 내용의 신뢰도를 검토하며 정확한 정보를 선별하려는 태도를 보임.',
+        '심화 학습 내용을 조원들과 나누며 함께 배우는 분위기를 이끎.',
+        '탐구 결과를 자료로 제작하여 학습 결과물의 완성도를 한층 높임.'
+      ],
+      closings:[
+        '이 과정에서 스스로 학습을 확장해 나가는 역량을 뚜렷이 입증함.',
+        '자기주도적 탐구 태도가 이후 학습에도 꾸준히 이어질 것으로 기대됨.'
+      ]
+    },
+    { label:'실무 적용',
+      openings:[
+        '이론 학습에 그치지 않고 '+cShort+'을 실제 상황에 적용해보려는 시도를 함.',
+        cShort+'을 배운 후 곧바로 실제 사례에 적용해보며 실무 감각을 익힘.'
+      ],
+      middles:[
+        '다양한 사례를 조사하여 실제 적용 시 고려해야 할 점을 구체적으로 파악함.',
+        hasM ? m+'을 상황별로 구분하여 대응 순서를 체계적으로 정리함.' : '문제 상황을 단계별로 분석하고 해결 방안을 순서대로 도출함.',
+        '자료를 다룰 때 정확성을 우선시하며 신중하게 접근하는 태도를 보임.',
+        '실제 사례를 표나 순서도로 정리하여 누구나 쉽게 참고할 수 있도록 구성함.',
+        '적용 사례를 조원과 공유하며 서로의 이해도를 점검하고 보완함.',
+        '실습 과정에서 발생한 시행착오를 기록하고 개선 방안을 스스로 도출함.',
+        '학습한 내용을 앞으로의 진로와 연결지어 생각하는 태도를 보임.'
+      ],
+      closings:[
+        '실무적 감각을 익히려는 노력이 결과물 전반에 걸쳐 드러남.',
+        '이러한 실무 적용 경험이 향후 실습 활동의 밑거름이 됨.'
+      ]
+    },
+    { label:'설명·교육 역량',
+      openings:[
+        cShort+'에 대해 급우들이 이해하기 쉽게 풀어 설명하며 소통 능력을 발휘함.',
+        '어려운 내용인 '+cShort+'을 또래의 눈높이에 맞게 설명하는 역량을 보임.'
+      ],
+      middles:[
+        '전문 용어를 일상적인 언어로 바꾸어 눈높이에 맞게 전달하는 역량을 보임.',
+        hasM ? '핵심 내용을 구체적인 예시와 비유를 들어 설득력 있게 풀어냄.' : '어려운 개념도 실생활 예시와 연결하여 쉽게 설명함.',
+        '동료의 질문을 끝까지 경청한 뒤 논리적인 근거를 들어 답변함.',
+        '설명 중간중간 조원들의 이해도를 확인하며 속도를 조절하는 배려심을 보임.',
+        '시범과 자료를 함께 활용하여 모든 조원의 이해를 이끌어내는 모습을 보임.',
+        '발표 후 부족했던 부분을 스스로 점검하고 다음 발표에 반영하려는 태도를 보임.',
+        '표정과 어조를 조절해가며 청중의 집중을 유지하는 발표력을 보임.'
+      ],
+      closings:[
+        '이러한 경험을 통해 타인에게 지식을 전달하는 역량을 꾸준히 성장시킴.',
+        '설명하는 과정에서 스스로도 개념을 더 명확히 정리하게 됨.'
+      ]
+    },
+    { label:'통합적 사고',
+      openings:[
+        '서로 다른 개념을 연결지어 생각하는 통합적 사고 역량을 보임.',
+        cFull+'을 개별 지식이 아닌 하나의 흐름으로 엮어 이해하려는 태도를 보임.'
+      ],
+      middles:[
+        cFull+'과 관련된 여러 요소들의 연관성을 파악하고 하나의 흐름으로 정리함.',
+        hasM ? '비교 대상을 통합적 관점에서 살펴보며 상황에 맞는 전략을 학습함.' : '여러 자료를 종합하여 스스로 결론을 도출하는 능력을 보임.',
+        '단편적인 지식에 머무르지 않고 원인, 결과, 관련 개념을 연결지어 이해함.',
+        '이전 단원에서 배운 내용을 떠올려 새로운 개념과 자연스럽게 연결지음.',
+        '정리한 내용을 도식이나 표로 시각화하여 전체 흐름을 한눈에 보이도록 구성함.',
+        '서로 대립되는 정보를 만났을 때 근거를 비교하여 타당한 쪽을 판단함.',
+        '통합적으로 정리한 내용을 발표하며 조원들의 이해를 함께 확장시킴.'
+      ],
+      closings:[
+        '통합적으로 정리한 내용을 바탕으로 스스로 새로운 질문을 만들어내는 모습을 보임.',
+        '부분과 전체를 함께 보는 사고력이 학습 전반에 걸쳐 드러남.'
+      ]
+    },
+    { label:'실생활 연계',
+      openings:[
+        '일상에서 접할 수 있는 사례를 찾아 '+cShort+'과 연결지어 이해하려는 태도를 보임.',
+        cShort+'을 교실 밖 상황과 연결지어 생각해보려는 태도를 꾸준히 보임.'
+      ],
+      middles:[
+        unit+'에서 학습한 내용이 실생활에서 갖는 의미를 스스로 정리함.',
+        hasM ? m+'을 실제 상황에 맞게 구체적으로 파악하고 적용 방법을 고민함.' : '핵심 내용을 자신의 경험이나 주변 사례와 견주어 이해함.',
+        '주변 사람에게 설명할 수 있을 정도로 개념을 명확하게 체화함.',
+        '학습한 내용을 뉴스나 실제 사건과 연결지어 생각해보는 태도를 보임.',
+        '가족이나 지인의 사례를 떠올리며 학습 내용을 자신의 경험과 연결지어 이해함.',
+        '실생활 문제를 해결하는 데 학습 내용을 응용해보려는 시도를 함.',
+        '이론에 머무르지 않고 실천 가능한 수준까지 내용을 구체화하는 모습을 보임.'
+      ],
+      closings:[
+        '실생활 연계 활동을 통해 학습에 대한 흥미와 동기를 지속적으로 유지함.',
+        '배운 내용을 삶과 연결지으려는 태도가 학습의 의미를 더함.'
+      ]
+    },
+    { label:'협업·리더십',
+      openings:[
+        '조별 활동을 주도적으로 이끌며 협업 능력과 리더십을 보임.',
+        cShort+' 관련 조별 활동에서 자연스럽게 중심 역할을 맡아 이끔.'
+      ],
+      middles:[
+        cFull+'에 관한 내용을 명확한 자료와 사례로 구성하여 발표를 준비함.',
+        '조원들의 다양한 의견을 경청하고 통합하여 완성도 높은 결과물을 도출함.',
+        '조원 개개인의 강점을 파악하여 적절히 역할을 배분하는 세심함을 보임.',
+        '진행 상황을 주기적으로 점검하며 일정에 맞춰 활동이 마무리되도록 관리함.',
+        '의견이 엇갈리는 상황에서도 침착하게 조율하여 협력적인 분위기를 유지함.',
+        '소극적인 조원에게도 발언 기회를 주며 모두가 참여하도록 배려함.',
+        '활동 종료 후 잘된 점과 아쉬운 점을 조원들과 함께 되짚어보는 시간을 가짐.'
+      ],
+      closings:[
+        '이 과정을 통해 공동의 목표를 이루기 위한 협력의 가치를 체득함.',
+        '조원들의 신뢰를 바탕으로 활동을 안정적으로 이끌어가는 모습을 보임.'
+      ]
+    },
+    { label:'자료 조사·정보 활용',
+      openings:[
+        cShort+'과 관련된 자료를 다양한 경로로 탐색하고 신뢰할 수 있는 정보를 선별함.',
+        cShort+'을 조사할 때 여러 출처를 비교하며 정확한 정보를 찾으려 노력함.'
+      ],
+      middles:[
+        '최신 자료와 통계를 찾아 학습 내용을 스스로 보완하려는 태도를 보임.',
+        hasM ? m+'과 관련된 정보를 비교하여 신뢰도 높은 자료를 선택하는 안목을 발휘함.' : '여러 출처의 자료를 비교하며 정보의 신뢰도를 판단하는 안목을 기름.',
+        '수집한 자료를 자신의 언어로 재구성하여 이해하기 쉽게 정리함.',
+        '자료의 출처와 발행 시기를 꼼꼼히 확인하며 정보를 선별하는 태도를 보임.',
+        '수집한 자료를 주제별로 분류하여 필요할 때 다시 찾아볼 수 있도록 정리함.',
+        '상반된 정보를 접했을 때 추가 자료를 찾아 사실관계를 확인하려는 태도를 보임.',
+        '조사한 내용을 인용할 때 출처를 명확히 밝히는 정직한 태도를 보임.'
+      ],
+      closings:[
+        '이러한 자료 탐색 경험을 통해 정보 활용 능력을 지속적으로 향상시킴.',
+        '정보를 선별하고 검증하는 습관이 학습 전반에 자연스럽게 배어 있음.'
+      ]
+    },
+    { label:'관찰·분석력',
+      openings:[
+        unit+'에 대한 자료를 체계적으로 살펴보며 뛰어난 관찰 및 분석 능력을 보임.',
+        cFull+'을 세밀히 관찰하고 근거를 바탕으로 분석하는 능력을 보임.'
+      ],
+      middles:[
+        cFull+'의 세부 요소를 평가하는 기준을 스스로 세워 꼼꼼히 적용함.',
+        hasM ? m+'을 정확히 구분하고 그 근거를 논리적으로 설명함.' : '세부 요소 간의 미세한 차이를 근거를 들어 정확히 구분함.',
+        '자료를 검토할 때 예외 상황까지 놓치지 않고 파악하는 세심함을 보임.',
+        '관찰한 내용을 기준에 따라 분류하고 비교하며 체계적으로 정리함.',
+        '눈에 잘 띄지 않는 세부 사항까지 놓치지 않고 짚어내는 관찰력을 보임.',
+        '분석 결과를 근거로 삼아 자신의 주장을 논리적으로 뒷받침함.',
+        '분석 과정에서 발견한 특이사항을 별도로 정리하여 추가 학습 자료로 활용함.'
+      ],
+      closings:[
+        '이러한 관찰·분석 경험을 통해 문제를 다각도로 살피는 습관을 형성함.',
+        '세심한 관찰력이 학습 전반의 정확도를 높이는 데 기여함.'
+      ]
+    },
+    { label:'전인적 관점',
+      openings:[
+        '신체적, 심리적, 사회적 측면을 통합적으로 이해하는 전인적 관점을 보임.',
+        cShort+'을 다룰 때 사람 전체를 바라보는 폭넓은 시각을 보임.'
+      ],
+      middles:[
+        cShort+'을 다룰 때 대상자가 처한 상황을 공감하고 지지하는 접근 방법을 탐구함.',
+        hasM ? m+'을 개별 상황에 맞게 적용하는 방안을 스스로 수립함.' : '개별 상황을 고려한 맞춤형 접근 방안을 스스로 수립함.',
+        '단순한 지식 습득을 넘어 인간 존중의 가치를 학습 과정에 반영하려는 태도를 보임.',
+        '대상자의 입장에서 생각해보는 사례 토의에 적극적으로 참여함.',
+        '다양한 배경을 가진 대상자를 이해하려는 열린 태도를 꾸준히 보임.',
+        '학습한 가치를 말로만 그치지 않고 실제 행동으로 옮기려는 모습을 보임.',
+        '조원들과 전인적 관점의 중요성을 나누며 서로의 생각을 넓혀감.'
+      ],
+      closings:[
+        '이러한 경험을 통해 대상자를 존중하는 태도를 꾸준히 실천하려는 자세를 보임.',
+        '전인적 관점에서 사람을 바라보는 태도가 학습 전반에 자연스럽게 드러남.'
+      ]
+    },
+    { label:'문제 제기·탐구질문',
+      openings:[
+        '왜 '+cShort+'이 그렇게 나타나는지에 대한 의문을 스스로 제기하며 학습을 시작함.',
+        cShort+'을 두고 스스로 질문을 던지며 탐구를 이어감.'
+      ],
+      middles:[
+        '이 질문을 해결하기 위해 관련 자료를 찾고 원인을 단계적으로 추적함.',
+        hasM ? m+'과 연결지어 자신이 세운 가설을 검증해 나가는 과정을 보임.' : '자신이 세운 가설을 자료를 통해 검증해 나가는 탐구 과정을 보임.',
+        '탐구 과정에서 예상과 다른 결과가 나오면 원인을 재분석하는 유연함을 보임.',
+        '스스로 던진 질문에 대한 답을 논리적인 구조로 정리하여 제시함.',
+        '하나의 질문에서 출발해 관련된 새로운 질문들을 계속 이어가는 탐구력을 보임.',
+        '질문에 대한 답을 찾는 과정을 기록으로 남겨 학습의 흐름을 명확히 정리함.',
+        '풀리지 않는 의문은 교사나 동료에게 적극적으로 물어 해결하려는 태도를 보임.'
+      ],
+      closings:[
+        '이러한 질문 중심 학습 태도가 이후 학습에서도 꾸준히 이어짐.',
+        '끊임없이 질문하는 태도가 탐구의 깊이를 더해감.'
+      ]
+    },
+    { label:'창의적 표현',
+      openings:[
+        cShort+'을 자신만의 방식으로 재구성하여 표현하는 창의성을 보임.',
+        '정형화된 틀에서 벗어나 '+cShort+'을 새로운 방식으로 표현하려는 시도를 함.'
+      ],
+      middles:[
+        '도표, 그림, 모형 등 다양한 형태로 학습 내용을 시각화하여 정리함.',
+        hasM ? m+'을 창의적인 자료 형태로 표현하여 조원들의 이해를 도움.' : '핵심 개념을 참신한 비유로 재해석하여 표현함.',
+        '기존과 다른 접근으로 문제를 풀어보려는 시도를 아끼지 않음.',
+        '결과물에 자신만의 관점과 해석을 담아 완성도를 높임.',
+        '주어진 형식에 얽매이지 않고 다양한 표현 방식을 시도하는 개방적 태도를 보임.',
+        '완성한 결과물에 대해 스스로 의미를 설명할 수 있을 만큼 이해가 깊음.',
+        '창의적인 아이디어를 조원들과 나누며 함께 발전시켜 나가는 모습을 보임.'
+      ],
+      closings:[
+        '이러한 창의적 표현 활동을 통해 학습에 대한 몰입도를 높임.',
+        '독창적인 발상이 결과물 곳곳에서 자연스럽게 드러남.'
+      ]
+    },
+    { label:'자기점검·개선',
+      openings:[
+        '스스로 학습 과정을 점검하고 부족한 부분을 찾아 보완하는 태도를 보임.',
+        cShort+'을 학습한 뒤 자신의 이해 수준을 스스로 되돌아보는 습관을 보임.'
+      ],
+      middles:[
+        cShort+'에 대한 학습 결과를 되짚어보며 이해가 부족한 부분을 다시 학습함.',
+        hasM ? m+' 관련 오류를 스스로 발견하고 수정하는 자기주도적 태도를 보임.' : '스스로 세운 학습 계획과 실제 결과를 비교하며 개선점을 찾아냄.',
+        '동료나 교사의 피드백을 적극적으로 수용하여 다음 활동에 반영함.',
+        '반복되는 실수를 기록해두고 같은 실수를 줄이려 노력하는 모습을 보임.',
+        '학습 목표를 스스로 세우고 달성 여부를 주기적으로 점검함.',
+        '성취가 부족했던 부분에 대해 원인을 분석하고 보완 계획을 세움.',
+        '작은 성취도 스스로 인정하며 학습에 대한 긍정적 태도를 유지함.'
+      ],
+      closings:[
+        '이러한 자기점검 습관을 통해 학습의 질을 스스로 꾸준히 높여감.',
+        '스스로를 돌아보는 태도가 꾸준한 학습 개선으로 이어짐.'
+      ]
+    },
+    { label:'사례 기반 탐구',
+      openings:[
+        '실제 사례를 중심으로 '+cShort+'에 접근하며 구체적인 탐구를 진행함.',
+        cShort+'과 관련된 실제 사례를 찾아 이론과 현실을 함께 살펴봄.'
+      ],
+      middles:[
+        '사례 속 상황을 분석하여 이론적 개념이 실제로 어떻게 나타나는지 파악함.',
+        hasM ? m+'이 적용된 사례를 찾아 그 효과와 한계를 함께 분석함.' : '유사 사례를 비교하며 공통된 원리를 스스로 도출함.',
+        '사례 분석 결과를 바탕으로 자신만의 결론을 논리적으로 제시함.',
+        '하나의 사례에 머무르지 않고 여러 사례를 비교하며 일반화를 시도함.',
+        '조사한 사례를 조원들과 공유하며 다양한 관점을 함께 검토함.',
+        '사례의 배경과 맥락까지 함께 살펴보며 입체적으로 이해하려는 태도를 보임.',
+        '사례 분석을 통해 얻은 통찰을 다른 학습 상황에도 적용해보려는 시도를 함.'
+      ],
+      closings:[
+        '사례 중심 학습을 통해 이론과 실제를 연결하는 안목을 기름.',
+        '구체적 사례에 기반한 탐구가 개념 이해의 깊이를 더함.'
+      ]
+    }
+  ];
+}
+
+function buildTemplates(unit, concepts, methods){
+  const pools = buildPools(unit, concepts, methods);
+  return pools.map(p => ({
+    label: p.label,
+    sentences: [pickOne(p.openings), ...shuffleArr(p.middles), pickOne(p.closings)]
+  }));
+}
+
+function buildText(sentences, limit){
+  let result = '';
+  for (const s of sentences){
+    if (!s) continue;
+    if (result.length === 0) result = s;
+    else if ((result + ' ' + s).length <= limit) result += ' ' + s;
+    else break;
+  }
+  return result;
+}
+
+document.getElementById('genBtn').addEventListener('click', function(){
+  const subject = document.getElementById('subjectSelect').value || '해당 과목';
+  const bigUnit = document.getElementById('bigUnitSelect').value || '';
+  const smallUnit = document.getElementById('smallUnitSelect').value || '이번 단원';
+  const concepts = document.getElementById('concepts').value.split(',').map(s => s.trim()).filter(Boolean);
+  const methods = document.getElementById('methods').value.split(',').map(s => s.trim()).filter(Boolean);
+  const limit = parseInt(document.getElementById('limit').value, 10);
+
+  const templates = buildTemplates(smallUnit, concepts, methods);
+  const container = document.getElementById('results');
+  container.innerHTML = '';
+  container.dataset.subject = subject;
+  container.dataset.bigUnit = bigUnit === NO_BIG ? '' : bigUnit;
+  container.dataset.smallUnit = smallUnit;
+
+  templates.forEach((t, idx) => {
+    const text = buildText(t.sentences, limit);
+    const card = document.createElement('div');
+    card.className = 'card';
+
+    const header = document.createElement('div');
+    header.className = 'card-head';
+    const titleSpan = document.createElement('span');
+    titleSpan.className = 'label';
+    titleSpan.textContent = '버전 ' + (idx + 1) + ' · ' + t.label;
+    const countSpan = document.createElement('span');
+    countSpan.className = 'count';
+    countSpan.textContent = text.length + ' / ' + limit + '자';
+    header.appendChild(titleSpan);
+    header.appendChild(countSpan);
+
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.addEventListener('input', () => countSpan.textContent = ta.value.length + ' / ' + limit + '자');
+
+    const actions = document.createElement('div');
+    actions.className = 'actions';
+
+    const copyBtn = document.createElement('button');
+    copyBtn.textContent = '복사';
+    copyBtn.addEventListener('click', () => {
+      navigator.clipboard.writeText(ta.value);
+      copyBtn.textContent = '복사됨';
+      setTimeout(() => copyBtn.textContent = '복사', 1200);
+    });
+
+    const saveBtn = document.createElement('button');
+    saveBtn.textContent = '시트에 저장';
+    saveBtn.addEventListener('click', async () => {
+      await apiPost({
+        type: 'saveRecord',
+        teacher: document.getElementById('teacherName').value.trim(),
+        subject: container.dataset.subject,
+        bigUnit: container.dataset.bigUnit,
+        smallUnit: container.dataset.smallUnit,
+        version: t.label,
+        content: ta.value
+      });
+      saveBtn.textContent = '저장됨';
+      setTimeout(() => saveBtn.textContent = '시트에 저장', 1200);
+    });
+
+    actions.appendChild(copyBtn);
+    actions.appendChild(saveBtn);
+    card.appendChild(header);
+    card.appendChild(ta);
+    card.appendChild(actions);
+    container.appendChild(card);
+  });
+
+  document.getElementById('bottomActions').style.display = 'flex';
+});
+
+document.getElementById('copyAllBtn').addEventListener('click', function(){
+  const textareas = document.querySelectorAll('#results textarea');
+  const all = [];
+  textareas.forEach((ta, i) => all.push('[버전 ' + (i+1) + ']\n' + ta.value));
+  navigator.clipboard.writeText(all.join('\n\n'));
+});
+
+document.getElementById('downloadBtn').addEventListener('click', function(){
+  const container = document.getElementById('results');
+  const textareas = document.querySelectorAll('#results textarea');
+  const head = '과목: ' + (container.dataset.subject||'') +
+    (container.dataset.bigUnit ? ' / 대단원: ' + container.dataset.bigUnit : '') +
+    ' / 소단원: ' + (container.dataset.smallUnit||'') + '\n\n';
+  const all = [head];
+  textareas.forEach((ta, i) => all.push('[버전 ' + (i+1) + ']\n' + ta.value));
+  const blob = new Blob([all.join('\n\n')], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = (container.dataset.subject||'') + '_' + (container.dataset.smallUnit||'sesteuk') + '_세특.txt';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById('saveAllBtn').addEventListener('click', async function(){
+  const container = document.getElementById('results');
+  const textareas = document.querySelectorAll('#results textarea');
+  const statusEl = document.getElementById('statusSaveAll');
+  statusEl.textContent = '저장 중...';
+  const items = Array.from(textareas).map((ta, i) => ({
+    version: '버전' + (i + 1), content: ta.value
+  }));
+  await apiPost({
+    type: 'saveRecords',
+    teacher: document.getElementById('teacherName').value.trim(),
+    subject: container.dataset.subject,
+    bigUnit: container.dataset.bigUnit,
+    smallUnit: container.dataset.smallUnit,
+    items
+  });
+  statusEl.textContent = '전체 저장 완료';
+  setTimeout(() => statusEl.textContent = '', 2000);
+});
+
+loadAndRefresh();
+</script>
+</body>
+</html>
